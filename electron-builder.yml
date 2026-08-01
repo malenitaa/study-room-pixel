@@ -1,0 +1,21 @@
+appId: com.malena.studyroompixel
+productName: Study Room Pixel
+directories:
+  buildResources: build
+files:
+  - out/**/*
+  - resources/**/*
+  - package.json
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [universal]
+    - target: zip
+      arch: [universal]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+dmg:
+  writeUpdateInfo: false
+npmRebuild: false
+publish: null

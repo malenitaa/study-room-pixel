@@ -1,0 +1,30 @@
+{
+  "name": "study-room-pixel",
+  "version": "0.1.0",
+  "description": "Study room pixel art ambiental — escenas con audio de loop y timer, para trabajar con foco",
+  "author": "Malena",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "generate-audio": "node scripts/generate-audio.mjs",
+    "postinstall": "electron-builder install-app-deps",
+    "dist": "npm run build && electron-builder --mac"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^32.2.6",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.7.2"
+  }
+}
