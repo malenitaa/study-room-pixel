@@ -6,3 +6,6 @@ release/
 .DS_Store
 .vite/
 *.tsbuildinfo
+
+# Private local file (never pushed)
+README.privado.md

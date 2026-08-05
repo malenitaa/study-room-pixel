@@ -1,44 +1,47 @@
-# Seguridad — mapeo contra OWASP Top 10 (2021)
+# Security — mapping against the OWASP Top 10 (2021)
 
-Esta app no tiene backend, no tiene red, no tiene cuentas ni datos de terceros — así que la
-mayoría de las categorías del OWASP Top 10 (pensado originalmente para apps web con servidor)
-no aplican directamente. Igual documento acá cómo se mitiga cada una, o por qué no aplica, para
-que quede explícito y auditable.
+This app has no backend, no network, no accounts, and no third-party data — so most OWASP
+Top 10 categories (originally meant for server-backed web apps) don't apply directly. Still,
+this documents how each is mitigated, or why it doesn't apply, to keep it explicit and
+auditable.
 
-| # | Categoría OWASP | Aplica acá | Mitigación / motivo |
+| # | OWASP Category | Applies here | Mitigation / reason |
 |---|---|---|---|
-| A01 | Broken Access Control | Parcial | No hay usuarios ni roles. El único "límite de acceso" real es Node vs. renderer: `contextIsolation: true`, `nodeIntegration: false` y `sandbox: true` en el `BrowserWindow` (`src/main/index.ts`) impiden que el renderer toque Node/`fs`/`child_process` directamente. El preload (`src/preload/index.ts`) expone únicamente 4 funciones puntuales vía `contextBridge`, nunca objetos crudos. |
-| A02 | Cryptographic Failures | No aplica | No se maneja información sensible, credenciales ni datos personales. `config.json` solo guarda preferencias de UI (escena, volumen, duración). |
-| A03 | Injection | Mitigado | No hay SQL, shell ni `eval`/`new Function` en ningún lado del código. El único dato "externo" que se lee es `config.json` desde disco, y se pasa siempre por `sanitizeConfig()` (`src/shared/config.ts`), que valida tipos, rangos y enums antes de confiar en cualquier campo — incluso si el archivo fue editado a mano o está corrupto. |
-| A04 | Insecure Design | Mitigado | Modelo "cero red, cero cuentas, cero telemetría" desde el diseño: `connect-src 'none'` en la CSP hace que cualquier intento de `fetch`/`XHR`/WebSocket falle en runtime, no solo "no se hace". Los audios se cargan como assets locales bundleados (`media-src 'self'`), nunca por streaming. |
-| A05 | Security Misconfiguration | Mitigado | CSP estricta (`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'none'; object-src 'none'`) declarada como meta tag en `index.html` — **esa es la que rige en la app empaquetada**, porque carga vía `file://` y `webRequest.onHeadersReceived` (también registrado en `src/main/index.ts`) no se dispara para ese protocolo (verificado con `scripts/verify-security.mjs`). En `npm run dev` se usa a propósito una CSP **relajada** (`script-src 'self' 'unsafe-eval' 'unsafe-inline'`, `connect-src` permitiendo el websocket de HMR) — el bootstrap de Vite/React Fast Refresh la necesita para inyectar su script y aplicar hot updates; sin eso la ventana queda en blanco (bug real que apareció y se corrigió). Esa relajación existe únicamente en `src/main/index.ts` (rama `isDev`) y en `electron.vite.config.ts` (`devCspPlugin`, que solo reescribe la meta tag cuando Vite corre como dev server) — el build de producción nunca la ve. `will-navigate` y `setWindowOpenHandler` deniegan siempre, `will-attach-webview` bloqueado, `setPermissionRequestHandler` deniega todo permiso (mic, cámara, notificaciones — la app no necesita ninguno). Sin `remote` module. |
-| A06 | Vulnerable and Outdated Components | Responsabilidad del mantenimiento | Dependencias mínimas a propósito (React + Electron + tooling de build, sin librerías de audio/gráficos de terceros). Correr `npm audit` y mantener Electron actualizado periódicamente — Electron ships parches de Chromium con frecuencia. |
-| A07 | Identification and Authentication Failures | No aplica | No hay login ni sesiones. |
-| A08 | Software and Data Integrity Failures | Mitigado | `electron-builder` empaqueta todo el código local, sin auto-update configurado (`publish: null`) — no hay canal remoto que pueda ser secuestrado para servir un update malicioso. Si en el futuro se agrega auto-update, hay que firmarlo y verificarlo. |
-| A09 | Security Logging and Monitoring Failures | No aplica | App local de un solo usuario, sin telemetría ni logs enviados a ningún lado (a propósito — cero red). |
-| A10 | Server-Side Request Forgery (SSRF) | No aplica | No hay servidor ni la app hace requests salientes; `connect-src 'none'` lo garantiza también del lado del renderer. |
+| A01 | Broken Access Control | Partial | No users or roles. The only real "access boundary" is Node vs. renderer: `contextIsolation: true`, `nodeIntegration: false`, and `sandbox: true` on the `BrowserWindow` (`src/main/index.ts`) prevent the renderer from touching Node/`fs`/`child_process` directly. The preload (`src/preload/index.ts`) exposes only 4 specific functions via `contextBridge`, never raw objects. |
+| A02 | Cryptographic Failures | N/A | No sensitive information, credentials, or personal data is handled. `config.json` only stores UI preferences (scene, volume, duration). |
+| A03 | Injection | Mitigated | No SQL, shell, or `eval`/`new Function` anywhere in the code. The only "external" data read is `config.json` from disk, and it always goes through `sanitizeConfig()` (`src/shared/config.ts`), which validates types, ranges, and enums before trusting any field — even if the file was hand-edited or corrupted. |
+| A04 | Insecure Design | Mitigated | "Zero network, zero accounts, zero telemetry" model by design: `connect-src 'none'` in the CSP makes any `fetch`/`XHR`/WebSocket attempt fail at runtime, not just "isn't done." Audio loads as bundled local assets (`media-src 'self'`), never streamed. |
+| A05 | Security Misconfiguration | Mitigated | Strict CSP (`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'none'; object-src 'none'`) declared as a meta tag in `index.html` — **that's the one that governs the packaged app**, since it loads via `file://` and `webRequest.onHeadersReceived` (also registered in `src/main/index.ts`) doesn't fire for that protocol (verified with `scripts/verify-security.mjs`). `npm run dev` intentionally uses a **relaxed** CSP (`script-src 'self' 'unsafe-eval' 'unsafe-inline'`, `connect-src` allowing the HMR websocket) — Vite/React Fast Refresh's bootstrap needs it to inject its script and apply hot updates; without it the window stays blank (a real bug that appeared and got fixed). That relaxation exists only in `src/main/index.ts` (the `isDev` branch) and `electron.vite.config.ts` (`devCspPlugin`, which only rewrites the meta tag when Vite runs as a dev server) — the production build never sees it. `will-navigate` and `setWindowOpenHandler` always deny, `will-attach-webview` is blocked, `setPermissionRequestHandler` denies every permission (mic, camera, notifications — the app needs none). No `remote` module. |
+| A06 | Vulnerable and Outdated Components | Maintenance responsibility | Deliberately minimal dependencies (React + Electron + build tooling, no third-party audio/graphics libraries). Run `npm audit` and keep Electron updated periodically — Electron ships Chromium patches frequently. |
+| A07 | Identification and Authentication Failures | N/A | No login or sessions. |
+| A08 | Software and Data Integrity Failures | Mitigated | `electron-builder` packages all local code, with no auto-update configured (`publish: null`) — no remote channel that could be hijacked to serve a malicious update. If auto-update is ever added, it must be signed and verified. |
+| A09 | Security Logging and Monitoring Failures | N/A | Local, single-user app, no telemetry or logs sent anywhere (on purpose — zero network). |
+| A10 | Server-Side Request Forgery (SSRF) | N/A | No server, and the app makes no outgoing requests; `connect-src 'none'` guarantees that on the renderer side too. |
 
-## Puntos concretos del código
+## Concrete points in the code
 
-- `src/main/index.ts`: `webPreferences` con `contextIsolation`, `sandbox`, `nodeIntegration: false`; `app.enableSandbox()`; CSP por header (efectiva solo en dev, ver tabla arriba); `setPermissionRequestHandler` deniega todo; `will-navigate`/`setWindowOpenHandler`/`will-attach-webview` bloquean navegación y ventanas nuevas.
-- `src/preload/index.ts`: superficie expuesta = 4 funciones (`getConfig`, `setConfig`, `setFullScreen`, `isFullScreen`), todas atadas a canales IPC fijos, sin pasar objetos de Electron/Node al renderer.
-- `src/shared/config.ts`: `sanitizeConfig()` — nunca se confía en el JSON de `config.json` tal cual viene de disco.
-- `src/renderer/index.html`: CSP como meta tag — la que efectivamente protege la app empaquetada.
+- `src/main/index.ts`: `webPreferences` with `contextIsolation`, `sandbox`, `nodeIntegration: false`; `app.enableSandbox()`; CSP via header (effective only in dev, see table above); `setPermissionRequestHandler` denies everything; `will-navigate`/`setWindowOpenHandler`/`will-attach-webview` block navigation and new windows.
+- `src/preload/index.ts`: exposed surface = 4 functions (`getConfig`, `setConfig`, `setFullScreen`, `isFullScreen`), all tied to fixed IPC channels, never passing Electron/Node objects to the renderer.
+- `src/shared/config.ts`: `sanitizeConfig()` — the JSON from `config.json` is never trusted as-is from disk.
+- `src/renderer/index.html`: CSP as a meta tag — the one that actually protects the packaged app.
 
-## Verificación automatizada
+## Automated verification
 
-`scripts/verify-security.mjs` levanta la app ya buildeada (`out/`) en una ventana oculta y chequea
-en runtime, contra el proceso real de Electron (no simulado): que `window.require`/`window.process`/
-`require` no están expuestos, que `window.api` tiene exactamente las 4 funciones esperadas, que
-`will-navigate` bloquea navegación externa, que `setWindowOpenHandler` deniega `window.open`, y si
-el header CSP llegó a interceptarse. Correr con:
+`scripts/verify-security.mjs` launches the already-built app (`out/`) in a hidden window and
+checks at runtime, against the real Electron process (not simulated): that
+`window.require`/`window.process`/`require` aren't exposed, that `window.api` has exactly the
+4 expected functions, that `will-navigate` blocks external navigation, that
+`setWindowOpenHandler` denies `window.open`, and whether the CSP header got intercepted. Run
+with:
 
 ```bash
 npm run build
 npx electron scripts/verify-security.mjs
 ```
 
-Sale con código 0 si todos los checks pasan, 1 si alguno falla (para poder engancharlo a CI en el
-futuro si hiciera falta).
+Exits with code 0 if all checks pass, 1 if any fail (so it can be hooked into CI later if
+needed).
 
-Si encontrás un problema de seguridad real en este proyecto personal, alcanza con abrir un issue o corregirlo directamente — no hay un programa formal de disclosure porque no es software distribuido a terceros.
+If you find a real security issue in this personal project, feel free to open an issue or fix
+it directly — there's no formal disclosure program since this isn't software distributed to
+third parties.
