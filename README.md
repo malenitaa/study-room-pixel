@@ -36,7 +36,8 @@ npm run dev                # electron-vite dev, con HMR en el renderer
 npm run typecheck          # tsc --noEmit sobre main/preload y renderer (lo corre "build" también)
 npm run build               # build de producción (main + preload + renderer) en out/
 npm run verify:security      # build + corre scripts/verify-security.mjs (ver SECURITY.md)
-npm run dist                  # build + empaqueta con electron-builder (dmg/zip en dist/)
+npm run verify:persistence    # build + corre scripts/verify-persistence.mjs (ver más abajo)
+npm run dist                   # build + empaqueta con electron-builder (dmg/zip en dist/)
 ```
 
 `resources/audio/*.wav` ya vienen generados y commiteados — no hace falta correr
@@ -90,6 +91,28 @@ laptop se suspende). En cambio guarda `endAt = Date.now() + duración`, y en cad
 `remaining = endAt - Date.now()`. El `setInterval` de 250ms solo dispara ese recálculo — nunca
 acumula tiempo. Si la máquina duerme 2 horas, al despertar el próximo tick calcula el remaining
 real (o que ya terminó), no sigue como si nada hubiera pasado.
+
+## Verificación de persistencia (config entre reinicios)
+
+`scripts/verify-persistence.mjs` prueba que `config.json` sobrevive a cerrar y reabrir la app,
+contra el pipeline real (no una reimplementación de la lógica de guardado):
+
+1. Levanta la app ya buildeada (`out/main/index.js`) como proceso hijo real, con un
+   `--user-data-dir` de prueba (aislado de tu config real) y `--remote-debugging-port` para
+   poder manejarla por Chrome DevTools Protocol.
+2. Le pide, vía CDP, que llame a `window.api.setConfig({...})` con valores de prueba —
+   exactamente la misma llamada que hace la UI real.
+3. Cierra ese proceso, lee `config.json` del disco para confirmar que quedó escrito.
+4. Levanta una instancia **nueva**, apuntando al mismo `--user-data-dir`, y le pide
+   `window.api.getConfig()` — confirma que devuelve exactamente lo guardado antes de cerrar.
+
+```bash
+npm run verify:persistence
+```
+
+No necesita ninguna dependencia nueva: usa `fetch`/`WebSocket` globales de Node 22+ para hablar
+CDP. El `--remote-debugging-port` solo se usa acá, al invocar el proceso manualmente para testear
+— la app empaquetada que instala un usuario final nunca se lanza con ese flag.
 
 ## Audio: qué es cada archivo y cómo reemplazarlo
 
