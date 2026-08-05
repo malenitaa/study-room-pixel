@@ -30,15 +30,30 @@ este archivo.
 ## Scripts
 
 ```bash
-npm install              # instala dependencias
-npm run generate-audio   # (re)genera los .wav de resources/audio/ — ver sección de audio abajo
-npm run dev               # electron-vite dev, con HMR en el renderer
-npm run build              # build de producción (main + preload + renderer)
-npm run dist                # build + empaqueta con electron-builder (dmg/zip en release/)
+npm install                # instala dependencias
+npm run generate-audio     # (re)genera los .wav de resources/audio/ — ver sección de audio abajo
+npm run dev                # electron-vite dev, con HMR en el renderer
+npm run typecheck          # tsc --noEmit sobre main/preload y renderer (lo corre "build" también)
+npm run build               # build de producción (main + preload + renderer) en out/
+npm run verify:security      # build + corre scripts/verify-security.mjs (ver SECURITY.md)
+npm run dist                  # build + empaqueta con electron-builder (dmg/zip en dist/)
 ```
 
 `resources/audio/*.wav` ya vienen generados y commiteados — no hace falta correr
 `generate-audio` para desarrollar, solo si querés regenerarlos o tocar la síntesis.
+
+### Sobre `npm run dist` (firma de código)
+
+El build **no está firmado ni notarizado** (`identity: null` en `electron-builder.yml`, a propósito
+— no hay cuenta de desarrollador Apple para este proyecto personal). Esto es intencional, no un
+error pendiente: [INSTALAR.md](./INSTALAR.md) ya explica cómo abrir la app igual sorteando el
+aviso de Gatekeeper la primera vez.
+
+Nota si compilás desde una carpeta sincronizada por iCloud Drive (como el path por default de este
+repo, dentro de `~/Library/Mobile Documents/com~apple~CloudDocs/...`): si en algún momento SÍ
+querés firmar con una identidad real, `codesign` falla ahí con *"resource fork, Finder information,
+or similar detritus not allowed"* — son atributos extendidos que iCloud le agrega a los archivos.
+Para firmar de verdad, movés el repo (o al menos la carpeta de build) fuera de iCloud Drive primero.
 
 ## Estructura del proyecto
 
@@ -83,13 +98,26 @@ Los cinco `.wav` en `resources/audio/` **son placeholders sintetizados por códi
 audio de terceros (evita problemas de licencias y respeta que la app no puede pegarle a ninguna
 fuente externa).
 
-| Archivo | Uso | Cómo está sintetizado |
-|---|---|---|
-| `rain.wav` | Loop ambiente, escena Lluvia | Ruido filtrado pasa-bajos + gotas ocasionales más agudas |
-| `fireplace.wav` | Loop ambiente, escena Chimenea | Rumor grave constante + crackles aleatorios con decaimiento |
-| `cafe.wav` | Loop ambiente, escena Cafetería | Murmullo grave (voces indistinguibles) + tintineos ocasionales |
-| `library.wav` | Loop ambiente, escena Biblioteca | Room tone muy tenue + pase de página ocasional |
-| `chime.wav` | Sonido de notificación al terminar el timer | Acorde de 3 tonos con envolvente exponencial |
+| Archivo | Uso | Cómo está sintetizado | Fuente / Licencia |
+|---|---|---|---|
+| `rain.wav` | Loop ambiente, escena Lluvia | Ruido filtrado pasa-bajos + gotas ocasionales más agudas | Generado por `scripts/generate-audio.mjs` — sin fuente externa, sin licencia de terceros |
+| `fireplace.wav` | Loop ambiente, escena Chimenea | Rumor grave constante + crackles aleatorios con decaimiento | Generado por `scripts/generate-audio.mjs` — sin fuente externa, sin licencia de terceros |
+| `cafe.wav` | Loop ambiente, escena Cafetería | Murmullo grave (voces indistinguibles) + tintineos ocasionales | Generado por `scripts/generate-audio.mjs` — sin fuente externa, sin licencia de terceros |
+| `library.wav` | Loop ambiente, escena Biblioteca | Room tone muy tenue + pase de página ocasional | Generado por `scripts/generate-audio.mjs` — sin fuente externa, sin licencia de terceros |
+| `chime.wav` | Sonido de notificación al terminar el timer | Acorde de 3 tonos con envolvente exponencial | Generado por `scripts/generate-audio.mjs` — sin fuente externa, sin licencia de terceros |
+
+Ningún archivo de audio fue descargado ni proviene de un banco de sonidos de terceros — los cinco
+son síntesis matemática pura (ruido filtrado, osciladores, envolventes), generados localmente por
+el script. Esto es deliberado: evita cualquier duda de licencia y respeta que la app no puede
+pegarle a ninguna fuente externa para conseguir assets.
+
+### Cambio de escena: crossfade, no corte abrupto
+
+`AudioManager` mantiene dos elementos `<audio>` fijos para el ambiente (creados una única vez, en
+el constructor — nunca se instancian `Audio` nuevos al cambiar de escena). Al elegir otra escena,
+el track entrante arranca en volumen 0 y el saliente empieza en su volumen actual; ambos se cruzan
+con `requestAnimationFrame` a lo largo de ~450ms hasta que el saliente llega a 0 y se pausa. Nunca
+hay dos loops sonando a volumen completo al mismo tiempo, ni un corte seco a silencio.
 
 **Para reemplazarlos por audio real** (grabaciones propias, o assets con licencia que hayas
 comprado/descargado vos): simplemente pisá el archivo correspondiente en `resources/audio/`

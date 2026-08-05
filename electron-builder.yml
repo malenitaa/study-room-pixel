@@ -13,7 +13,11 @@ mac:
       arch: [universal]
     - target: zip
       arch: [universal]
-  hardenedRuntime: true
+  # Sin identity: build ad-hoc/sin firmar a propósito (no hay cuenta de desarrollador Apple para
+  # esta app personal — ver INSTALAR.md para cómo abrirla igual sorteando Gatekeeper). Forzar esto
+  # explícito también evita que electron-builder intente autodetectar y usar CUALQUIER identidad
+  # que encuentre en el keychain del que compila.
+  identity: null
   gatekeeperAssess: false
 dmg:
   writeUpdateInfo: false
