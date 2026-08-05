@@ -1,162 +1,166 @@
 # Study Room Pixel
 
-App de escritorio (Electron + React + Vite) que muestra una escena pixel art ambiental —lluvia,
-chimenea, cafetería o biblioteca— con audio de loop y un timer de estudio/foco integrado. Pensada
-para dejar corriendo de fondo mientras trabajás.
+Desktop app (Electron + React + Vite) that shows an ambient pixel-art scene —rain,
+fireplace, café, or library— with looping audio and a built-in study/focus timer. Meant
+to run in the background while you work.
 
-Cero red, cero cuentas, cero telemetría: todo el audio y las escenas son locales, no hay ninguna
-llamada de red posible (ver [SECURITY.md](./SECURITY.md) para el detalle punto por punto contra
-OWASP Top 10).
+Zero network, zero accounts, zero telemetry: all audio and scenes are local, no network
+call is even possible (see [SECURITY.md](./SECURITY.md) for the point-by-point detail
+against the OWASP Top 10).
 
-Si sos quien va a *usar* la app (no a tocar el código), mirá [INSTALAR.md](./INSTALAR.md) en vez de
-este archivo.
+If you're going to *use* the app (not touch the code), check out [INSTALAR.md](./INSTALAR.md)
+instead of this file.
 
 ## Stack
 
-- [Electron](https://www.electronjs.org/) + [React](https://react.dev/) + [Vite](https://vitejs.dev/) vía [`electron-vite`](https://electron-vite.org/)
-- TypeScript en las tres capas (main / preload / renderer)
-- Sin base de datos: un único `config.json` en `app.getPath('userData')`
-- Sin librerías de audio/gráficos de terceros: las escenas son `<canvas>` dibujado a mano cuadro a
-  cuadro, y el audio son dos `<audio>` (ambiente en loop + chime de notificación)
-- `electron-builder` para empaquetar (target `mac`: dmg + zip)
+- [Electron](https://www.electronjs.org/) + [React](https://react.dev/) + [Vite](https://vitejs.dev/) via [`electron-vite`](https://electron-vite.org/)
+- TypeScript across all three layers (main / preload / renderer)
+- No database: a single `config.json` in `app.getPath('userData')`
+- No third-party audio/graphics libraries: scenes are hand-drawn `<canvas>` frame by
+  frame, and audio is two `<audio>` elements (looping ambience + notification chime)
+- `electron-builder` for packaging (target `mac`: dmg + zip)
 
-## Requisitos
+## Requirements
 
-- Node.js 20+ y npm
-- macOS (el `electron-builder.yml` está configurado para target `mac`; el resto del código no
-  usa nada específico de plataforma, así que agregar `win`/`linux` a `electron-builder.yml` alcanzaría
-  si en algún momento se quiere empaquetar para otro sistema)
+- Node.js 20+ and npm
+- macOS (`electron-builder.yml` is configured for the `mac` target; the rest of the code
+  doesn't use anything platform-specific, so adding `win`/`linux` to `electron-builder.yml`
+  would be enough if you ever want to package for another OS)
 
 ## Scripts
 
 ```bash
-npm install                # instala dependencias
-npm run generate-audio     # (re)genera los .wav de resources/audio/ — ver sección de audio abajo
-npm run dev                # electron-vite dev, con HMR en el renderer
-npm run typecheck          # tsc --noEmit sobre main/preload y renderer (lo corre "build" también)
-npm run build               # build de producción (main + preload + renderer) en out/
-npm run verify:security      # build + corre scripts/verify-security.mjs (ver SECURITY.md)
-npm run verify:persistence    # build + corre scripts/verify-persistence.mjs (ver más abajo)
-npm run dist                   # build + empaqueta con electron-builder (dmg/zip en dist/)
+npm install                # install dependencies
+npm run generate-audio     # (re)generates the .wav files in resources/audio/ — see the audio section below
+npm run dev                # electron-vite dev, with HMR in the renderer
+npm run typecheck          # tsc --noEmit over main/preload and renderer (also run by "build")
+npm run build               # production build (main + preload + renderer) into out/
+npm run verify:security      # build + runs scripts/verify-security.mjs (see SECURITY.md)
+npm run verify:persistence    # build + runs scripts/verify-persistence.mjs (see below)
+npm run dist                   # build + packages with electron-builder (dmg/zip in dist/)
 ```
 
-`resources/audio/*.wav` ya vienen generados y commiteados — no hace falta correr
-`generate-audio` para desarrollar, solo si querés regenerarlos o tocar la síntesis.
+`resources/audio/*.wav` are already generated and committed — no need to run
+`generate-audio` to develop, only if you want to regenerate them or tweak the synthesis.
 
-### Sobre `npm run dist` (firma de código)
+### About `npm run dist` (code signing)
 
-El build **no está firmado ni notarizado** (`identity: null` en `electron-builder.yml`, a propósito
-— no hay cuenta de desarrollador Apple para este proyecto personal). Esto es intencional, no un
-error pendiente: [INSTALAR.md](./INSTALAR.md) ya explica cómo abrir la app igual sorteando el
-aviso de Gatekeeper la primera vez.
+The build is **not signed or notarized** (`identity: null` in `electron-builder.yml`,
+on purpose — there's no Apple developer account for this personal project). This is
+intentional, not a pending bug: [INSTALAR.md](./INSTALAR.md) already explains how to
+open the app anyway by getting past the Gatekeeper warning the first time.
 
-Nota si compilás desde una carpeta sincronizada por iCloud Drive (como el path por default de este
-repo, dentro de `~/Library/Mobile Documents/com~apple~CloudDocs/...`): si en algún momento SÍ
-querés firmar con una identidad real, `codesign` falla ahí con *"resource fork, Finder information,
-or similar detritus not allowed"* — son atributos extendidos que iCloud le agrega a los archivos.
-Para firmar de verdad, movés el repo (o al menos la carpeta de build) fuera de iCloud Drive primero.
+Note if you build from a folder synced by iCloud Drive (like this repo's default path,
+inside `~/Library/Mobile Documents/com~apple~CloudDocs/...`): if you ever DO want to
+sign with a real identity, `codesign` fails there with *"resource fork, Finder
+information, or similar detritus not allowed"* — those are extended attributes iCloud
+adds to files. To actually sign it, move the repo (or at least the build folder) out of
+iCloud Drive first.
 
-## Estructura del proyecto
+## Project structure
 
 ```
 src/
-  shared/config.ts        Tipo de configuración compartido + sanitizeConfig() (main y renderer)
+  shared/config.ts        Shared config type + sanitizeConfig() (main and renderer)
   main/
-    index.ts               BrowserWindow, CSP, bloqueo de navegación, handlers IPC
-    config.ts               Lectura/escritura de config.json en userData
+    index.ts               BrowserWindow, CSP, navigation blocking, IPC handlers
+    config.ts               Reads/writes config.json in userData
   preload/
-    index.ts                 contextBridge: única superficie expuesta al renderer
-    index.d.ts                 Tipado de window.api
+    index.ts                 contextBridge: the only surface exposed to the renderer
+    index.d.ts                 Typing for window.api
   renderer/
-    index.html                 CSP también como meta tag (defensa en profundidad)
+    index.html                 CSP also as a meta tag (defense in depth)
     src/
-      App.tsx                   Compone escena + HUD (selector, timer, volumen, toggles)
-      scenes/                     Cada escena es una función `draw(ctx, w, h, dt, t)` sobre un
-                                    canvas de resolución virtual fija (192x108), escalado por CSS
-                                    con image-rendering:pixelated — nítido en cualquier tamaño de
-                                    ventana sin necesitar sprites pre-renderizados
+      App.tsx                   Composes scene + HUD (selector, timer, volume, toggles)
+      scenes/                     Each scene is a `draw(ctx, w, h, dt, t)` function over a
+                                    fixed virtual-resolution canvas (192x108), CSS-scaled
+                                    with image-rendering:pixelated — crisp at any window
+                                    size without needing pre-rendered sprites
       components/                 Timer, SceneSelector (thumbnails), VolumeControls, TitleBarControls
-      timer/useTimer.ts             Timer basado en timestamps (ver sección Timer abajo)
-      audio/                         AudioManager (dos <audio>) + hook useAmbientAudio
-      config/useConfig.ts             Hook: estado optimista + persistencia debounced vía IPC
-      styles/global.css                 Paleta violeta/lavanda/rosa, transición de escena en steps()
-resources/audio/            Los 5 .wav placeholder (ver más abajo)
-scripts/generate-audio.mjs   Script que sintetiza esos .wav (sin red, sin assets de terceros)
+      timer/useTimer.ts             Timestamp-based timer (see Timer section below)
+      audio/                         AudioManager (two <audio> elements) + useAmbientAudio hook
+      config/useConfig.ts             Hook: optimistic state + debounced persistence via IPC
+      styles/global.css                 Purple/lavender/pink palette, scene transition via steps()
+resources/audio/            The 5 placeholder .wav files (see below)
+scripts/generate-audio.mjs   Script that synthesizes those .wav files (no network, no third-party assets)
 ```
 
-## Timer a prueba de que la máquina se duerma
+## Timer that survives the machine sleeping
 
-`useTimer` no usa un contador que se decrementa con `setInterval` (eso se desincroniza si la
-laptop se suspende). En cambio guarda `endAt = Date.now() + duración`, y en cada tick recalcula
-`remaining = endAt - Date.now()`. El `setInterval` de 250ms solo dispara ese recálculo — nunca
-acumula tiempo. Si la máquina duerme 2 horas, al despertar el próximo tick calcula el remaining
-real (o que ya terminó), no sigue como si nada hubiera pasado.
+`useTimer` doesn't use a counter decremented via `setInterval` (that drifts out of sync
+if the laptop sleeps). Instead it stores `endAt = Date.now() + duration`, and on each
+tick recomputes `remaining = endAt - Date.now()`. The 250ms `setInterval` only triggers
+that recalculation — it never accumulates time. If the machine sleeps for 2 hours, on
+waking the next tick computes the real remaining time (or that it already finished),
+rather than continuing as if nothing happened.
 
-## Verificación de persistencia (config entre reinicios)
+## Persistence verification (config across restarts)
 
-`scripts/verify-persistence.mjs` prueba que `config.json` sobrevive a cerrar y reabrir la app,
-contra el pipeline real (no una reimplementación de la lógica de guardado):
+`scripts/verify-persistence.mjs` tests that `config.json` survives closing and reopening
+the app, against the real pipeline (not a reimplementation of the save logic):
 
-1. Levanta la app ya buildeada (`out/main/index.js`) como proceso hijo real, con un
-   `--user-data-dir` de prueba (aislado de tu config real) y `--remote-debugging-port` para
-   poder manejarla por Chrome DevTools Protocol.
-2. Le pide, vía CDP, que llame a `window.api.setConfig({...})` con valores de prueba —
-   exactamente la misma llamada que hace la UI real.
-3. Cierra ese proceso, lee `config.json` del disco para confirmar que quedó escrito.
-4. Levanta una instancia **nueva**, apuntando al mismo `--user-data-dir`, y le pide
-   `window.api.getConfig()` — confirma que devuelve exactamente lo guardado antes de cerrar.
+1. Launches the already-built app (`out/main/index.js`) as a real child process, with a
+   test `--user-data-dir` (isolated from your real config) and
+   `--remote-debugging-port` so it can be driven via the Chrome DevTools Protocol.
+2. Asks it, via CDP, to call `window.api.setConfig({...})` with test values — exactly
+   the same call the real UI makes.
+3. Closes that process, reads `config.json` from disk to confirm it was written.
+4. Launches a **new** instance, pointing at the same `--user-data-dir`, and asks it for
+   `window.api.getConfig()` — confirms it returns exactly what was saved before closing.
 
 ```bash
 npm run verify:persistence
 ```
 
-No necesita ninguna dependencia nueva: usa `fetch`/`WebSocket` globales de Node 22+ para hablar
-CDP. El `--remote-debugging-port` solo se usa acá, al invocar el proceso manualmente para testear
-— la app empaquetada que instala un usuario final nunca se lanza con ese flag.
+Needs no new dependency: it uses Node 22+'s global `fetch`/`WebSocket` to speak CDP.
+`--remote-debugging-port` is only used here, when manually invoking the process for
+testing — the packaged app an end user installs is never launched with that flag.
 
-## Audio: qué es cada archivo y cómo reemplazarlo
+## Audio: what each file is and how to replace it
 
-Los cinco `.wav` en `resources/audio/` **son placeholders sintetizados por código**
-(`scripts/generate-audio.mjs`), no grabaciones reales — no se descargó ni se usó ningún asset de
-audio de terceros (evita problemas de licencias y respeta que la app no puede pegarle a ninguna
-fuente externa).
+The five `.wav` files in `resources/audio/` **are code-synthesized placeholders**
+(`scripts/generate-audio.mjs`), not real recordings — no third-party audio asset was
+downloaded or used (avoids license issues and respects that the app can't reach out to
+any external source).
 
-| Archivo | Uso | Cómo está sintetizado | Fuente / Licencia |
+| File | Use | How it's synthesized | Source / License |
 |---|---|---|---|
-| `rain.wav` | Loop ambiente, escena Lluvia | Ruido filtrado pasa-bajos + gotas ocasionales más agudas | Generado por `scripts/generate-audio.mjs` — sin fuente externa, sin licencia de terceros |
-| `fireplace.wav` | Loop ambiente, escena Chimenea | Rumor grave constante + crackles aleatorios con decaimiento | Generado por `scripts/generate-audio.mjs` — sin fuente externa, sin licencia de terceros |
-| `cafe.wav` | Loop ambiente, escena Cafetería | Murmullo grave (voces indistinguibles) + tintineos ocasionales | Generado por `scripts/generate-audio.mjs` — sin fuente externa, sin licencia de terceros |
-| `library.wav` | Loop ambiente, escena Biblioteca | Room tone muy tenue + pase de página ocasional | Generado por `scripts/generate-audio.mjs` — sin fuente externa, sin licencia de terceros |
-| `chime.wav` | Sonido de notificación al terminar el timer | Acorde de 3 tonos con envolvente exponencial | Generado por `scripts/generate-audio.mjs` — sin fuente externa, sin licencia de terceros |
+| `rain.wav` | Ambient loop, Rain scene | Low-pass filtered noise + occasional higher-pitched drops | Generated by `scripts/generate-audio.mjs` — no external source, no third-party license |
+| `fireplace.wav` | Ambient loop, Fireplace scene | Constant low rumble + random decaying crackles | Generated by `scripts/generate-audio.mjs` — no external source, no third-party license |
+| `cafe.wav` | Ambient loop, Café scene | Low murmur (indistinguishable voices) + occasional clinks | Generated by `scripts/generate-audio.mjs` — no external source, no third-party license |
+| `library.wav` | Ambient loop, Library scene | Very faint room tone + occasional page turn | Generated by `scripts/generate-audio.mjs` — no external source, no third-party license |
+| `chime.wav` | Notification sound when the timer ends | 3-tone chord with an exponential envelope | Generated by `scripts/generate-audio.mjs` — no external source, no third-party license |
 
-Ningún archivo de audio fue descargado ni proviene de un banco de sonidos de terceros — los cinco
-son síntesis matemática pura (ruido filtrado, osciladores, envolventes), generados localmente por
-el script. Esto es deliberado: evita cualquier duda de licencia y respeta que la app no puede
-pegarle a ninguna fuente externa para conseguir assets.
+No audio file was downloaded or comes from a third-party sound library — all five are
+pure mathematical synthesis (filtered noise, oscillators, envelopes), generated locally
+by the script. This is deliberate: it avoids any license question and respects that the
+app can't reach out to any external source for assets.
 
-### Cambio de escena: crossfade, no corte abrupto
+### Scene switching: crossfade, not an abrupt cut
 
-`AudioManager` mantiene dos elementos `<audio>` fijos para el ambiente (creados una única vez, en
-el constructor — nunca se instancian `Audio` nuevos al cambiar de escena). Al elegir otra escena,
-el track entrante arranca en volumen 0 y el saliente empieza en su volumen actual; ambos se cruzan
-con `requestAnimationFrame` a lo largo de ~450ms hasta que el saliente llega a 0 y se pausa. Nunca
-hay dos loops sonando a volumen completo al mismo tiempo, ni un corte seco a silencio.
+`AudioManager` keeps two fixed `<audio>` elements for ambience (created once, in the
+constructor — no new `Audio` instances get created when switching scenes). When you pick
+another scene, the incoming track starts at volume 0 and the outgoing one starts at its
+current volume; both cross over via `requestAnimationFrame` across ~450ms until the
+outgoing one reaches 0 and pauses. There are never two loops playing at full volume at
+the same time, nor an abrupt cut to silence.
 
-**Para reemplazarlos por audio real** (grabaciones propias, o assets con licencia que hayas
-comprado/descargado vos): simplemente pisá el archivo correspondiente en `resources/audio/`
-manteniendo el mismo nombre — no hace falta tocar código. Recomendaciones:
-- Mono, 16-bit PCM, cualquier sample rate razonable (22050–44100 Hz)
-- Los de loop (todos menos `chime.wav`) deben empezar y terminar en fase/nivel similar para que no
-  se note el corte al repetirse — lo más simple es aplicarles un crossfade corto en los bordes
-- Nombres de archivo fijos: `rain.wav`, `fireplace.wav`, `cafe.wav`, `library.wav`, `chime.wav`
+**To replace them with real audio** (your own recordings, or licensed assets you've
+bought/downloaded yourself): just overwrite the matching file in `resources/audio/`
+keeping the same name — no code changes needed. Recommendations:
+- Mono, 16-bit PCM, any reasonable sample rate (22050–44100 Hz)
+- The looping ones (everything but `chime.wav`) should start and end at a similar
+  phase/level so the loop point isn't noticeable — the simplest way is a short crossfade
+  at the edges
+- Fixed filenames: `rain.wav`, `fireplace.wav`, `cafe.wav`, `library.wav`, `chime.wav`
 
-## Seguridad
+## Security
 
-Ver [SECURITY.md](./SECURITY.md) para el detalle completo (CSP, sandboxing, mapeo contra OWASP
-Top 10). Resumen: `contextIsolation` + `sandbox` + `nodeIntegration: false`, preload con superficie
-mínima, CSP estricta aplicada por header y por meta tag, navegación/ventanas nuevas/webviews
-bloqueados, sin `eval`, sin dependencias de red.
+See [SECURITY.md](./SECURITY.md) for the full detail (CSP, sandboxing, mapping against
+the OWASP Top 10). Summary: `contextIsolation` + `sandbox` + `nodeIntegration: false`,
+minimal-surface preload, strict CSP applied both by header and meta tag, navigation/new
+windows/webviews blocked, no `eval`, no network dependencies.
 
-## Licencia
+## License
 
-MIT — ver [LICENSE](./LICENSE).
+MIT — see [LICENSE](./LICENSE).
