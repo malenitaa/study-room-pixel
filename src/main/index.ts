@@ -3,11 +3,21 @@ import { join } from 'node:path'
 import { loadConfig, saveConfig } from './config'
 import type { AppConfig } from '../shared/config'
 
-const CSP =
+const PROD_CSP =
   "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
   "img-src 'self' data:; media-src 'self'; connect-src 'none'; object-src 'none'"
 
+// El bootstrap de Vite/React Fast Refresh en dev necesita 'unsafe-eval'/'unsafe-inline' y el
+// websocket de HMR — la CSP estricta de arriba lo bloquea y deja la ventana en blanco. Esta
+// versión relajada SOLO se usa cuando la app no está empaquetada (electron-vite dev). Debe
+// mantenerse en sync con la meta tag equivalente en electron.vite.config.ts (devCspPlugin).
+const DEV_CSP =
+  "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; " +
+  "style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; " +
+  "connect-src 'self' ws://localhost:5173; object-src 'none'"
+
 const isDev = !app.isPackaged
+const CSP = isDev ? DEV_CSP : PROD_CSP
 
 // Sandboxea todos los renderers de la app (además del sandbox por-ventana declarado abajo).
 app.enableSandbox()

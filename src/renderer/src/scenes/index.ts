@@ -12,10 +12,10 @@ export interface SceneDef {
 }
 
 export const SCENES: SceneDef[] = [
-  { id: 'rain', label: 'Lluvia', createDraw: createRainScene },
-  { id: 'fireplace', label: 'Chimenea', createDraw: createFireplaceScene },
-  { id: 'cafe', label: 'Cafetería', createDraw: createCafeScene },
-  { id: 'library', label: 'Biblioteca', createDraw: createLibraryScene }
+  { id: 'rain', label: 'Rain', createDraw: createRainScene },
+  { id: 'fireplace', label: 'Fireplace', createDraw: createFireplaceScene },
+  { id: 'cafe', label: 'Cafe', createDraw: createCafeScene },
+  { id: 'library', label: 'Library', createDraw: createLibraryScene }
 ]
 
 export function getScene(id: SceneId): SceneDef {

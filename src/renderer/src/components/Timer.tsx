@@ -44,17 +44,17 @@ export function Timer({ timer, onStart }: TimerProps): JSX.Element {
               value={customMinutes}
               onChange={(e) => setCustomMinutes(e.target.value)}
             />
-            <button onClick={() => startWithMinutes(Number(customMinutes) || 25)}>Iniciar</button>
+            <button onClick={() => startWithMinutes(Number(customMinutes) || 25)}>Start</button>
           </div>
         </>
       ) : (
         <div className="timer-controls">
           {timer.status === 'running' ? (
-            <button onClick={timer.pause}>Pausar</button>
+            <button onClick={timer.pause}>Pause</button>
           ) : (
-            <button onClick={timer.resume}>Seguir</button>
+            <button onClick={timer.resume}>Resume</button>
           )}
-          <button onClick={timer.reset}>Reiniciar</button>
+          <button onClick={timer.reset}>Reset</button>
         </div>
       )}
     </div>

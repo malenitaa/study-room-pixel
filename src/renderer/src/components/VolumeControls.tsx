@@ -14,7 +14,7 @@ export function VolumeControls({
   return (
     <div className="pixel-panel volume-controls">
       <label>
-        <span>Ambiente</span>
+        <span>Ambient</span>
         <input
           type="range"
           min={0}
@@ -25,7 +25,7 @@ export function VolumeControls({
         />
       </label>
       <label>
-        <span>Notificación</span>
+        <span>Notification</span>
         <input
           type="range"
           min={0}

@@ -46,7 +46,7 @@ export default function App(): JSX.Element {
   }, [fullScreen])
 
   if (!ready) {
-    return <div className="app app-loading">Cargando…</div>
+    return <div className="app app-loading">Loading…</div>
   }
 
   return (

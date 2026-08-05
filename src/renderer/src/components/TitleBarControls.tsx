@@ -13,10 +13,10 @@ export function TitleBarControls({
 }: TitleBarControlsProps): JSX.Element {
   return (
     <div className="titlebar-controls">
-      <button className={alwaysOnTop ? 'active' : ''} onClick={onToggleAlwaysOnTop} title="Siempre visible arriba">
+      <button className={alwaysOnTop ? 'active' : ''} onClick={onToggleAlwaysOnTop} title="Always on top">
         📌
       </button>
-      <button className={fullScreen ? 'active' : ''} onClick={onToggleFullScreen} title="Pantalla completa">
+      <button className={fullScreen ? 'active' : ''} onClick={onToggleFullScreen} title="Fullscreen">
         ⛶
       </button>
     </div>
