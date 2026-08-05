@@ -5,11 +5,11 @@
   "author": "Malena",
   "license": "MIT",
   "private": true,
-  "type": "module",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "build": "npm run typecheck && electron-vite build",
     "generate-audio": "node scripts/generate-audio.mjs",
     "postinstall": "electron-builder install-app-deps",
     "dist": "npm run build && electron-builder --mac"
