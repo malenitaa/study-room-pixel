@@ -1,4 +1,7 @@
+import type { Strings } from '../i18n/strings'
+
 interface VolumeControlsProps {
+  t: Strings
   ambientVolume: number
   notifVolume: number
   onAmbientChange: (value: number) => void
@@ -6,6 +9,7 @@ interface VolumeControlsProps {
 }
 
 export function VolumeControls({
+  t,
   ambientVolume,
   notifVolume,
   onAmbientChange,
@@ -14,7 +18,7 @@ export function VolumeControls({
   return (
     <div className="pixel-panel volume-controls">
       <label>
-        <span>Ambient</span>
+        <span>{t.ambient}</span>
         <input
           type="range"
           min={0}
@@ -25,7 +29,7 @@ export function VolumeControls({
         />
       </label>
       <label>
-        <span>Notification</span>
+        <span>{t.notification}</span>
         <input
           type="range"
           min={0}

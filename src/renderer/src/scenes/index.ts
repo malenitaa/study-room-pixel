@@ -5,17 +5,17 @@ import { createFireplaceScene } from './fireplace'
 import { createCafeScene } from './cafe'
 import { createLibraryScene } from './library'
 
+// Scene display names live in src/renderer/src/i18n/strings.ts (SCENE_LABEL_KEY).
 export interface SceneDef {
   id: SceneId
-  label: string
   createDraw: () => DrawFn
 }
 
 export const SCENES: SceneDef[] = [
-  { id: 'rain', label: 'Rain', createDraw: createRainScene },
-  { id: 'fireplace', label: 'Fireplace', createDraw: createFireplaceScene },
-  { id: 'cafe', label: 'Cafe', createDraw: createCafeScene },
-  { id: 'library', label: 'Library', createDraw: createLibraryScene }
+  { id: 'rain', createDraw: createRainScene },
+  { id: 'fireplace', createDraw: createFireplaceScene },
+  { id: 'cafe', createDraw: createCafeScene },
+  { id: 'library', createDraw: createLibraryScene }
 ]
 
 export function getScene(id: SceneId): SceneDef {

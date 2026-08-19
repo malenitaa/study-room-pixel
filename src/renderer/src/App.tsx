@@ -7,6 +7,7 @@ import { TitleBarControls } from './components/TitleBarControls'
 import { useConfig } from './config/useConfig'
 import { useTimer } from './timer/useTimer'
 import { useAmbientAudio } from './audio/useAmbientAudio'
+import { getStrings } from './i18n/strings'
 import type { SceneId } from '../../shared/config'
 
 export default function App(): JSX.Element {
@@ -45,8 +46,10 @@ export default function App(): JSX.Element {
     void window.api.setFullScreen(!fullScreen).then(setFullScreen)
   }, [fullScreen])
 
+  const t = getStrings(config.language)
+
   if (!ready) {
-    return <div className="app app-loading">Loading…</div>
+    return <div className="app app-loading">{t.loading}</div>
   }
 
   return (
@@ -55,18 +58,22 @@ export default function App(): JSX.Element {
 
       <div className="hud">
         <div className="hud-top">
-          <SceneSelector current={config.scene} onSelect={handleSelectScene} />
+          <SceneSelector t={t} current={config.scene} onSelect={handleSelectScene} />
           <TitleBarControls
+            t={t}
             alwaysOnTop={config.alwaysOnTop}
             fullScreen={fullScreen}
+            language={config.language}
             onToggleAlwaysOnTop={toggleAlwaysOnTop}
             onToggleFullScreen={toggleFullScreen}
+            onLanguageChange={(language) => update({ language })}
           />
         </div>
 
         <div className="hud-bottom">
-          <Timer timer={timer} onStart={handleStartTimer} />
+          <Timer t={t} timer={timer} onStart={handleStartTimer} />
           <VolumeControls
+            t={t}
             ambientVolume={config.ambientVolume}
             notifVolume={config.notifVolume}
             onAmbientChange={(v) => update({ ambientVolume: v })}

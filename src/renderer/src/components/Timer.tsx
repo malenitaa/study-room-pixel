@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { UseTimerResult } from '../timer/useTimer'
+import type { Strings } from '../i18n/strings'
 
 const PRESETS_MIN = [15, 25, 50]
 
@@ -11,11 +12,12 @@ function formatTime(ms: number): string {
 }
 
 interface TimerProps {
+  t: Strings
   timer: UseTimerResult
   onStart: (durationMs: number) => void
 }
 
-export function Timer({ timer, onStart }: TimerProps): JSX.Element {
+export function Timer({ t, timer, onStart }: TimerProps): JSX.Element {
   const [customMinutes, setCustomMinutes] = useState('25')
 
   const startWithMinutes = (minutes: number): void => {
@@ -44,17 +46,17 @@ export function Timer({ timer, onStart }: TimerProps): JSX.Element {
               value={customMinutes}
               onChange={(e) => setCustomMinutes(e.target.value)}
             />
-            <button onClick={() => startWithMinutes(Number(customMinutes) || 25)}>Start</button>
+            <button onClick={() => startWithMinutes(Number(customMinutes) || 25)}>{t.start}</button>
           </div>
         </>
       ) : (
         <div className="timer-controls">
           {timer.status === 'running' ? (
-            <button onClick={timer.pause}>Pause</button>
+            <button onClick={timer.pause}>{t.pause}</button>
           ) : (
-            <button onClick={timer.resume}>Resume</button>
+            <button onClick={timer.resume}>{t.resume}</button>
           )}
-          <button onClick={timer.reset}>Reset</button>
+          <button onClick={timer.reset}>{t.reset}</button>
         </div>
       )}
     </div>

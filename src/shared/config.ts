@@ -1,11 +1,14 @@
 export type SceneId = 'rain' | 'fireplace' | 'cafe' | 'library'
 
+export type LanguageSetting = 'auto' | 'en' | 'es'
+
 export interface AppConfig {
   scene: SceneId
   ambientVolume: number
   notifVolume: number
   lastDurationMs: number
   alwaysOnTop: boolean
+  language: LanguageSetting
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -13,10 +16,12 @@ export const DEFAULT_CONFIG: AppConfig = {
   ambientVolume: 0.6,
   notifVolume: 0.7,
   lastDurationMs: 25 * 60 * 1000,
-  alwaysOnTop: false
+  alwaysOnTop: false,
+  language: 'auto'
 }
 
 const SCENE_IDS: SceneId[] = ['rain', 'fireplace', 'cafe', 'library']
+const LANGUAGE_SETTINGS: LanguageSetting[] = ['auto', 'en', 'es']
 
 function clamp01(value: unknown, fallback: number): number {
   const num = typeof value === 'number' && Number.isFinite(value) ? value : fallback
@@ -42,6 +47,9 @@ export function sanitizeConfig(input: unknown): AppConfig {
     ambientVolume: clamp01(raw.ambientVolume, DEFAULT_CONFIG.ambientVolume),
     notifVolume: clamp01(raw.notifVolume, DEFAULT_CONFIG.notifVolume),
     lastDurationMs,
-    alwaysOnTop: raw.alwaysOnTop === true
+    alwaysOnTop: raw.alwaysOnTop === true,
+    language: LANGUAGE_SETTINGS.includes(raw.language as LanguageSetting)
+      ? (raw.language as LanguageSetting)
+      : DEFAULT_CONFIG.language
   }
 }
