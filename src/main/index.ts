@@ -22,6 +22,12 @@ const CSP = isDev ? DEV_CSP : PROD_CSP
 // Sandboxea todos los renderers de la app (además del sandbox por-ventana declarado abajo).
 app.enableSandbox()
 
+// Windows groups taskbar/notification identity by AppUserModelID; without it a
+// packaged build shows up as a generic Electron app.
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.malena.studyroompixel')
+}
+
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {

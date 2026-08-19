@@ -1,0 +1,44 @@
+name: Build app
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - "claude/**"
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+      - run: npm run dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: study-room-pixel-mac
+          path: dist/*.dmg
+          retention-days: 30
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+      - run: npm run dist:win
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: study-room-pixel-windows
+          path: dist/*.exe
+          retention-days: 30

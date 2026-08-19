@@ -21,5 +21,12 @@ mac:
   gatekeeperAssess: false
 dmg:
   writeUpdateInfo: false
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
 npmRebuild: false
 publish: null
