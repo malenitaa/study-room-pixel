@@ -1,18 +1,17 @@
 // Harness de verificación de seguridad — corre la app YA BUILDEADA (out/) en una ventana oculta
 // y ejecuta los checks "no negociables" del checklist: nodeIntegration/contextIsolation reales,
-// superficie del preload, CSP header, bloqueo de navegación externa y de window.open.
+// superficie del preload, CSP (meta tag del build y su efecto real), bloqueo de navegación externa
+// y de window.open. No inyecta ningún header CSP propio: lo que se prueba es la <meta> que viaja
+// en out/renderer/index.html, que es la defensa que llega a la app empaquetada (file:// no trae
+// headers de respuesta; el header que agrega src/main/index.ts es una segunda capa).
 // Uso: npm run build && npx electron scripts/verify-security.mjs
-import { app, BrowserWindow, session } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(__dirname, '..')
-
-const CSP =
-  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-  "img-src 'self' data:; media-src 'self'; connect-src 'none'; object-src 'none'"
 
 const rendererHtml = join(ROOT, 'out/renderer/index.html')
 const preloadPath = join(ROOT, 'out/preload/index.js')
@@ -22,7 +21,6 @@ if (!existsSync(rendererHtml) || !existsSync(preloadPath)) {
   process.exit(2)
 }
 
-let capturedCsp = null
 let newWindowsOpened = 0
 let navigationBlocked = false
 
@@ -33,15 +31,21 @@ function check(label, pass, detail) {
 }
 
 app.whenReady().then(async () => {
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    if (details.resourceType === 'mainFrame' && !capturedCsp) {
-      const header = details.responseHeaders?.['Content-Security-Policy']
-      capturedCsp = Array.isArray(header) ? header[0] : (header ?? null)
-    }
-    callback({
-      responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP] }
-    })
-  })
+  const html = readFileSync(rendererHtml, 'utf-8')
+  const metaMatch = html.match(/<meta[^>]*http-equiv="Content-Security-Policy"[^>]*content="([^"]*)"/i)
+  const metaCsp = metaMatch ? metaMatch[1] : null
+  check(
+    "out/renderer/index.html trae la <meta> CSP con connect-src 'none' y script-src 'self' sin unsafe-*",
+    typeof metaCsp === 'string' &&
+      metaCsp.includes("connect-src 'none'") &&
+      /script-src 'self'(;|$)/.test(metaCsp),
+    metaCsp ?? 'no hay <meta> CSP'
+  )
+  const firstScript = html.search(/<script/i)
+  check(
+    'la <meta> CSP está antes del primer <script>',
+    metaMatch !== null && (firstScript === -1 || metaMatch.index < firstScript)
+  )
 
   app.on('browser-window-created', () => {
     newWindowsOpened++
@@ -92,6 +96,21 @@ app.whenReady().then(async () => {
     `window.api = ${JSON.stringify(domChecks.apiKeys)}`
   )
 
+  const fetchResult = await win.webContents.executeJavaScript(`
+    new Promise((resolve) => {
+      let violated = null
+      document.addEventListener('securitypolicyviolation', (e) => { violated = e.effectiveDirective })
+      fetch('https://example.com/')
+        .then(() => 'respondió', (err) => 'rechazado: ' + err.name)
+        .then((outcome) => setTimeout(() => resolve({ outcome, violated }), 100))
+    })
+  `)
+  check(
+    'la CSP bloquea fetch() a una URL externa',
+    fetchResult.violated === 'connect-src' && fetchResult.outcome.startsWith('rechazado'),
+    `fetch ${fetchResult.outcome}, directiva violada: ${fetchResult.violated}`
+  )
+
   await win.webContents
     .executeJavaScript("window.location.href = 'https://example.com'")
     .catch(() => undefined)
@@ -110,12 +129,6 @@ app.whenReady().then(async () => {
     'setWindowOpenHandler denegó la apertura de una ventana nueva',
     newWindowsOpened === 0,
     `ventanas nuevas creadas: ${newWindowsOpened}`
-  )
-
-  check(
-    "header Content-Security-Policy presente y con connect-src 'none'",
-    typeof capturedCsp === 'string' && capturedCsp.includes("connect-src 'none'"),
-    capturedCsp ?? 'ningún header capturado'
   )
 
   const allPassed = results.every((r) => r.pass)
