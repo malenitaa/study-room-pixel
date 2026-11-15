@@ -54,8 +54,8 @@ auditable.
 | A02 | Cryptographic Failures | N/A | No sensitive information, credentials, or personal data is handled. `config.json` only stores UI preferences (scene, volume, duration). |
 | A03 | Injection | Mitigated | No SQL, shell, or `eval`/`new Function` anywhere in the code. The only "external" data read is `config.json` from disk, and it always goes through `sanitizeConfig()` (`src/shared/config.ts`), which validates types, ranges, and enums before trusting any field — even if the file was hand-edited or corrupted. |
 | A04 | Insecure Design | Mitigated | "Zero network, zero accounts, zero telemetry" model by design: `connect-src 'none'` in the CSP makes any `fetch`/`XHR`/WebSocket attempt fail at runtime, not just "isn't done." Audio loads as bundled local assets (`media-src 'self'`), never streamed. |
-| A05 | Security Misconfiguration | Mitigated | Strict CSP (`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'none'; object-src 'none'`) declared as a meta tag in `index.html` — **that's the one that governs the packaged app**, since it loads via `file://` and `webRequest.onHeadersReceived` (also registered in `src/main/index.ts`) doesn't fire for that protocol (verified with `scripts/verify-security.mjs`). `npm run dev` intentionally uses a **relaxed** CSP (`script-src 'self' 'unsafe-eval' 'unsafe-inline'`, `connect-src` allowing the HMR websocket) — Vite/React Fast Refresh's bootstrap needs it to inject its script and apply hot updates; without it the window stays blank (a real bug that appeared and got fixed). That relaxation exists only in `src/main/index.ts` (the `isDev` branch) and `electron.vite.config.ts` (`devCspPlugin`, which only rewrites the meta tag when Vite runs as a dev server) — the production build never sees it. `will-navigate` and `setWindowOpenHandler` always deny, `will-attach-webview` is blocked, `setPermissionRequestHandler` denies every permission (mic, camera, notifications — the app needs none). No `remote` module. |
-| A06 | Vulnerable and Outdated Components | Maintenance responsibility | Deliberately minimal dependencies (React + Electron + build tooling, no third-party audio/graphics libraries). Run `npm audit` and keep Electron updated periodically — Electron ships Chromium patches frequently. |
+| A05 | Security Misconfiguration | Mitigated | Strict CSP (`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'none'; object-src 'none'`) declared as a meta tag in `index.html` — **that's the one that governs the packaged app**, since it travels inside the build itself (`scripts/verify-security.mjs` checks the built meta tag and that it actually blocks a `fetch()`). `webRequest.onHeadersReceived` in `src/main/index.ts` adds the same policy as a header as a second layer (on Electron 45 it does fire for `file://` loads). `npm run dev` intentionally uses a **relaxed** CSP (`script-src 'self' 'unsafe-eval' 'unsafe-inline'`, `connect-src` allowing the HMR websocket) — Vite/React Fast Refresh's bootstrap needs it to inject its script and apply hot updates; without it the window stays blank (a real bug that appeared and got fixed). That relaxation exists only in `src/main/index.ts` (the `isDev` branch) and `electron.vite.config.ts` (`devCspPlugin`, which only rewrites the meta tag when Vite runs as a dev server) — the production build never sees it. `will-navigate` and `setWindowOpenHandler` always deny, `will-attach-webview` is blocked, `setPermissionRequestHandler` denies every permission (mic, camera, notifications — the app needs none). No `remote` module. |
+| A06 | Vulnerable and Outdated Components | Maintenance responsibility | Deliberately minimal dependencies (React + Electron + build tooling, no third-party audio/graphics libraries). Kept on a supported Electron major (45). CI runs `npm audit --package-lock-only --audit-level=high` on every PR and push to `main`, and Dependabot proposes npm and GitHub Actions updates weekly, after a 7-day cooldown. Electron ships Chromium patches frequently, so those updates are worth taking. |
 | A07 | Identification and Authentication Failures | N/A | No login or sessions. |
 | A08 | Software and Data Integrity Failures | Mitigated | `electron-builder` packages all local code, with no auto-update configured (`publish: null`) — no remote channel that could be hijacked to serve a malicious update. If auto-update is ever added, it must be signed and verified. |
 | A09 | Security Logging and Monitoring Failures | N/A | Local, single-user app, no telemetry or logs sent anywhere (on purpose — zero network). |
@@ -74,16 +74,17 @@ auditable.
 checks at runtime, against the real Electron process (not simulated): that
 `window.require`/`window.process`/`require` aren't exposed, that `window.api` has exactly the
 4 expected functions, that `will-navigate` blocks external navigation, that
-`setWindowOpenHandler` denies `window.open`, and whether the CSP header got intercepted. Run
-with:
+`setWindowOpenHandler` denies `window.open`, that the built `index.html` carries the CSP meta
+tag with `connect-src 'none'` before any script, and that a `fetch()` to an external URL is
+actually blocked by it (`connect-src` violation). Run with:
 
 ```bash
 npm run build
 npx electron scripts/verify-security.mjs
 ```
 
-Exits with code 0 if all checks pass, 1 if any fail (so it can be hooked into CI later if
-needed).
+Exits with code 0 if all checks pass, 1 if any fail. CI (`.github/workflows/build.yml`) runs it
+on macOS and Windows for every PR and push to `main`.
 
 ## Reporting
 
