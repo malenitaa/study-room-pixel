@@ -27,7 +27,8 @@ See [`INSTALL.md`](./INSTALL.md) for a simple, no-terminal, step-by-step guide
 
 Short version: download the `.dmg` (Mac) or the `Setup .exe` (Windows) from
 [Releases](https://github.com/malenitaa/study-room-pixel/releases) and install
-it like any other app.
+it like any other app. It needs macOS 13 or later, or 64-bit Windows 10 or
+later.
 
 ## Features
 
@@ -54,7 +55,7 @@ it like any other app.
 
 ## For developers
 
-Requirements: Node.js 20+.
+Requirements: Node.js 20.19+ or 22.12+.
 
 ```bash
 git clone https://github.com/malenitaa/study-room-pixel.git
